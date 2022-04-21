@@ -1,0 +1,11 @@
+<p>Sign up </p>
+<p>Are you already signed up? <a routerLink="/login" >Login</a></p>
+
+
+<label for="name">username:</label><br>
+<input type="text" id="name" name="name" value="" [(ngModel)]="username" placeholder="Enter your username"><br>
+<label for="lname">Image Url:</label><br>
+<input type="text" id="image_url" name="image_url" value="" [(ngModel)]="imageUrl"
+    placeholder="Enter your image URL"><br><br>
+<input type="submit" value="Submit" (click)="checkVal()">
+

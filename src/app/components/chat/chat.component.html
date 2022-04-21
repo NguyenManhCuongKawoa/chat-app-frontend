@@ -1,0 +1,81 @@
+<div class="container">
+  <h3 class=" text-center">Messaging</h3>
+  <div class="messaging">
+    <div class="inbox_msg">
+      <div class="inbox_people">
+        <div class="headind_srch">
+          <div class="recent_heading">
+            <h4>Recent</h4>
+          </div>
+          <div class="srch_bar">
+            <div class="stylish-input-group">
+              <input type="text" class="search-bar" placeholder="Search">
+              <span class="input-group-addon">
+                <button type="button"> <i class="fa fa-search" aria-hidden="true"></i> </button>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="inbox_chat">
+          <div class="chat_list " [class.active_chat]="contactUser.id == userActive.id"
+            *ngFor="let contactUser of contactUsers">
+            <div class="chat_people" (click)="changeUserActive(contactUser.id)">
+              <div class="chat_img"> <img src="{{contactUser.imageUrl}}" alt="sunil"> </div>
+              <div class="chat_ib">
+                <h5>{{contactUser.username}} <span class="chat_date"
+                    *ngIf="contactUser.lastMessage != null">{{contactUser.lastMessage.timestamp | date:'short'}}</span>
+                </h5>
+                <p *ngIf="contactUser.newMessages > 0">{{contactUser.newMessages}} new messages</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mesgs">
+        <div class="msg_history" #scrollMe [scrollTop]="scrollMe.scrollHeight">
+          <div *ngFor="let message of messages">
+            <div class="incoming_msg" *ngIf="message.senderId == userActive.id">
+              <div class="incoming_msg_img"> <img src="{{userActive.imageUrl}}" alt="sunil">
+              </div>
+              <div class="received_msg">
+                <div class="received_withd_msg">
+                  <p>{{message.content}}</p>
+                  <span class="time_date"> {{message.timestamp | date:'short'}}</span>
+                </div>
+              </div>
+            </div>
+            <div class="outgoing_msg" *ngIf="message.senderId != userActive.id">
+              <div class="sent_msg">
+                <p>{{message.content}}</p>
+                <span class="time_date" style="text-align: right; margin-right: 16px;"> 
+                  {{message.timestamp | date:'short'}}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="type_msg">
+          <div class="type_msg-previews">
+            <app-images-preview></app-images-preview>
+          </div>
+          <div class="input_msg_write">
+            <div class="input_msg_write-utils">
+              <div class="input_msg_write-utils-upload-images">
+                <label for="upload__inputfile" style="margin-bottom: 0; cursor: pointer">
+                  <input type="file" multiple="" data-max_length="20" id="upload__inputfile" class="upload__inputfile">
+                  <i class="fa fa-cloud-upload" aria-hidden="true"></i>
+                </label>
+              </div>
+            </div>
+            <input type="text" class="write_msg" placeholder="Type a message" [(ngModel)]="text" 
+              (keydown)="enterForSubmit($event)"
+            />
+            <button (click)="handleSendMessage()" class="msg_send_btn" type="button"><i class="fa fa-paper-plane-o"
+                aria-hidden="true"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

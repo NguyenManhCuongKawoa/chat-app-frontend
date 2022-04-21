@@ -1,0 +1,6 @@
+<p>Sign in </p>
+<p>Are you have account? <a routerLink="/signup" >Sign up</a></p>
+
+<label for="name">username:</label><br>
+<input type="text" id="name" name="name" value="" [(ngModel)]="username" placeholder="Enter your username"><br>
+<input type="submit" value="Submit" (click)="login()">
