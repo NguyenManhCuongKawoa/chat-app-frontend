@@ -2,7 +2,7 @@
 import { Component, ViewChild } from '@angular/core';
 import * as Stomp from 'stompjs';
 import * as SockJS from 'sockjs-client';
-import { ActivatedRoute, ParamMap } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 
 import {Message, User} from '../../interfaces/common'
 import {
@@ -10,8 +10,8 @@ import {
   countNewMessages, 
   getUserById,
   findChatMessages,
-  findChatMessage,
-  ChangeMessageStatus
+  findChatMessage, 
+  changeStatus
 } from '../../utils/ApiUtil'
 import { ScrollToBottomDirective } from 'src/app/utils/scroll-to-bottom.directive';
 
@@ -35,11 +35,13 @@ export class ChatComponent {
   private messages: Message[] = [];
   private text: string;
 
+  private imagePreviewUrl: string[] = [];
 
-  constructor(private router: ActivatedRoute){}
+
+  constructor(private route: ActivatedRoute, private router: Router){}
 
   ngOnInit() {
-    this.router.paramMap.subscribe((params: ParamMap) => {
+    this.route.paramMap.subscribe((params: ParamMap) => {
       this.uId = +params.get('id')
       getUserById(this.uId)
         .then(json => {
@@ -60,14 +62,26 @@ export class ChatComponent {
 
     const _this = this;
     this.stompClient.connect({}, _this.onConnected.bind(_this), _this.onError)
+    console.log(this.stompClient)
   }
 
   onConnected(frame) {
+    // changeStatus(this.uId, true)
+    //   .then((res) => {console.log(res)})
+    //   .catch((err) => {console.log(err)})
+    console.log('isOnline: ', this.stompClient.connected)
     console.log('Connected: ' + frame);
     this.stompClient.subscribe(
       "/user/" + this.uId + "/queue/messages", 
       this.onMessageReceived.bind(this)
     );
+
+    this.stompClient.subscribe(
+      "/user/change/status", 
+      this.onChangeStatus.bind(this)
+    );
+    
+    this.stompClient.send(`/app/users/status/${this.uId}/1`);
   }
 
   onError(err) {
@@ -77,7 +91,6 @@ export class ChatComponent {
   onMessageReceived(msg) {
     const _this = this;
     const notification = JSON.parse(msg.body);
-    
     if (this.userActive.id == notification.senderId) {
       console.log(notification)
       findChatMessage(notification.id).then((message) => {
@@ -87,6 +100,19 @@ export class ChatComponent {
       // Notification message arrived
       _this.loadContacts()
     }
+  }
+
+  onChangeStatus(payload) {
+    
+    console.log('change online:', payload);
+    const _this = this;
+    const user = JSON.parse(payload.body);
+    _this.contactUsers.map((contact) => {
+      if(contact.id === user.id) {
+        contact.online = user.online;
+      }
+      return contact;
+    })
   }
 
   sendMessage(msg) {
@@ -126,8 +152,9 @@ export class ChatComponent {
     const _this = this;
     const promise = getAllUsersWithoutMe(_this.uId).then((users) => {
       return users.map((contact) =>
+
         countNewMessages(contact.id, _this.uId).then((data) => {
-          console.log(data)
+          // console.log(data)
           contact.newMessages = data.times;
           contact.lastMessage = data.lastMessage;
           return contact;
@@ -137,6 +164,7 @@ export class ChatComponent {
 
     promise.then((promises) =>
       Promise.all(promises).then((users) => {
+        console.log(users)
         users.sort((a, b) => {
           if(!a.lastMessage) return 0; 
           if(!b.lastMessage) return -1;
@@ -173,5 +201,38 @@ export class ChatComponent {
       .catch(err => console.log(err.message))
   
     _this.loadContacts()
+  }
+
+  onImageUploadChange(event) {
+    console.log(event.target.files )
+    const _this = this;
+    
+    if(event.target.files && event.target.files.length) {
+      const files = event.target.files;
+      for(let i = 0; i < files.length; i++) {
+        
+        const reader = new FileReader();
+        let file = files[i];
+
+        reader.readAsDataURL(file);
+    
+        reader.onload = () => {
+     
+          let imageUrl = reader.result as string;
+          // console.log(imageUrl);
+          _this.imagePreviewUrl.push(imageUrl)
+        };
+      }
+    }
+  }
+
+  logout() {
+    this.stompClient.send(`/app/users/status/${this.uId}/0`);
+    this.stompClient.disconnect();
+    // changeStatus(this.uId, false)
+    //   .then((res) => {console.log(res)})
+    //   .catch((err) => {console.log(err)})
+    this.router.navigate(['login'])
+    console.log('isOnline: ', this.stompClient.connected)
   }
 }

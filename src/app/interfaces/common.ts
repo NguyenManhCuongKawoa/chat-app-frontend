@@ -12,6 +12,7 @@ export interface User {
     id: number,
     username: string,
     imageUrl: string,
+    online: boolean,
     newMessages?: number,
-    lastMessage?: Message
+    lastMessage?: Message,
 }

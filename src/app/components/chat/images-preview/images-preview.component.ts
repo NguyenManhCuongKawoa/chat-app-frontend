@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 
 @Component({
   selector: 'app-images-preview',
@@ -6,6 +6,10 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./images-preview.component.css']
 })
 export class ImagesPreviewComponent implements OnInit {
+
+
+  @Input() imageUrl!: string 
+  
 
   constructor() { }
 

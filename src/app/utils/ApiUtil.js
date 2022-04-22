@@ -19,6 +19,18 @@ export const saveUser = (data) => {
     )
 }
 
+export const changeStatus = (id, isOnline) => {
+  return fetch(CHAT_SERVICE + '/users/status/' + id + '/' + (isOnline ? 1 : 0))
+    .then((response) =>
+      response.json().then((json) => {
+        if (!response.ok) {
+          return Promise.reject(json);
+        }
+        return json;
+      })
+    )
+}
+
 
 export const getAllUsersWithoutMe = (id) => {
   return fetch(CHAT_SERVICE + '/users/without/' + id)
@@ -31,6 +43,8 @@ export const getAllUsersWithoutMe = (id) => {
       })
     )
 }
+
+
 
 export const login = (username) => {
   return fetch(CHAT_SERVICE + '/login/' + username)
@@ -96,4 +110,3 @@ export function findChatMessage(id) {
     method: "GET",
   });
 }
-

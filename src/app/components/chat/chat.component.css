@@ -89,6 +89,17 @@ img {
 .chat_img {
   float: left;
   width: 11%;
+  position: relative;
+}
+
+.chat_img-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #31A24C;
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
 .chat_ib {
@@ -235,4 +246,11 @@ img {
 .msg_history {
   height: 516px;
   overflow-y: auto;
+}
+
+.type_msg-previews {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
 }

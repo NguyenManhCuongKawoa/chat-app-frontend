@@ -1,7 +1,18 @@
 .upload__img-box {
-    width: 200px;
     padding: 0 10px;
     margin-bottom: 12px;
+}
+
+.img-bg  {
+    position: relative;
+    width: 64px;
+    height: 64px;
+}
+
+.img-bg img {
+    position: relative;
+    width: 100%;
+    object-fit: cover;
 }
 
 .upload__img-close {
@@ -16,8 +27,6 @@
     line-height: 24px;
     z-index: 1;
     cursor: pointer;
-
-    
 }
 
 .upload__img-close:after {
