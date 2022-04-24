@@ -1,6 +1,9 @@
-<div class='upload__img-box'>
-    <div class='img-bg'>
-        <img src="{{imageUrl}}" />
-        <div class='upload__img-close'></div>
+
+<div class="image-preview" >
+    <div class='upload__img-box' *ngFor="let imagePreview of imagePreviews">
+        <div class='img-bg'>
+            <img src="{{imagePreview.url}}" />
+            <div class='upload__img-close' (click)="removeImage(imagePreview)"></div>
+        </div>
     </div>
 </div>

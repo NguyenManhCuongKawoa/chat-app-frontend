@@ -1,17 +1,17 @@
 
-import { Component, ViewChild } from '@angular/core';
-import * as Stomp from 'stompjs';
+import { Component, HostListener, OnInit, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import * as SockJS from 'sockjs-client';
+import { Stomp, Client } from '@stomp/stompjs';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
+import * as uuid from 'uuid';
 
-import {Message, User} from '../../interfaces/common'
+import {ImagePreview, Message, User} from '../../interfaces/common'
 import {
   getAllUsersWithoutMe,
   countNewMessages, 
   getUserById,
   findChatMessages,
-  findChatMessage, 
-  changeStatus
+  findChatMessage,
 } from '../../utils/ApiUtil'
 import { ScrollToBottomDirective } from 'src/app/utils/scroll-to-bottom.directive';
 
@@ -20,10 +20,13 @@ import { ScrollToBottomDirective } from 'src/app/utils/scroll-to-bottom.directiv
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.css']
 })
-export class ChatComponent {
+export class ChatComponent implements OnInit, AfterViewInit {
   
   // @ViewChild(ScrollToBottomDirective)
   scroll: ScrollToBottomDirective;
+
+  @ViewChild('textMessageRef', {static: false}) 
+  private textMessageRef: ElementRef;
   
   title = 'WebSocketChatRoom';
 
@@ -35,12 +38,15 @@ export class ChatComponent {
   private messages: Message[] = [];
   private text: string;
 
-  private imagePreviewUrl: string[] = [];
+  private imagePreviews: ImagePreview[] = [];
 
 
   constructor(private route: ActivatedRoute, private router: Router){}
 
   ngOnInit() {
+    
+    const _this = this;
+
     this.route.paramMap.subscribe((params: ParamMap) => {
       this.uId = +params.get('id')
       getUserById(this.uId)
@@ -50,49 +56,55 @@ export class ChatComponent {
         .catch(err => console.log(err.message))
     
     })
-    const _this = this;
    
     this.connect();
     this.loadContacts();
   }
 
-  connect() {
-    const socket = new SockJS('http://localhost:8080/ws');
-    this.stompClient = Stomp.over(socket);
+  ngAfterViewInit() {
+    this.textMessageRef.nativeElement.focus();
+  }
 
+  connect() {
     const _this = this;
-    this.stompClient.connect({}, _this.onConnected.bind(_this), _this.onError)
-    console.log(this.stompClient)
+    const socket = new SockJS('http://localhost:8080/ws');
+    this.stompClient = Stomp.over(() => socket);
+    console.log(this.stompClient); 
+
+    this.stompClient.connect({}, _this.onConnected.bind(_this), _this.onError.bind(_this), _this.onClosed.bind(_this))
   }
 
   onConnected(frame) {
-    // changeStatus(this.uId, true)
-    //   .then((res) => {console.log(res)})
-    //   .catch((err) => {console.log(err)})
-    console.log('isOnline: ', this.stompClient.connected)
     console.log('Connected: ' + frame);
-    this.stompClient.subscribe(
-      "/user/" + this.uId + "/queue/messages", 
-      this.onMessageReceived.bind(this)
-    );
 
     this.stompClient.subscribe(
-      "/user/change/status", 
+      "/user/status", 
       this.onChangeStatus.bind(this)
     );
     
-    this.stompClient.send(`/app/users/status/${this.uId}/1`);
+    this.stompClient.subscribe(
+      "/user/" + this.uId + "/messages", 
+      this.onMessageReceived.bind(this)
+    );
+
+   
+    this.sendStatusUser(1)
   }
 
   onError(err) {
-    console.log(err);
+    console.log("Error", err);
+    
+    this.onDisconnect()
+  };
+
+  onClosed(event) {
+    console.log("Closed", event);
   };
 
   onMessageReceived(msg) {
     const _this = this;
     const notification = JSON.parse(msg.body);
     if (this.userActive.id == notification.senderId) {
-      console.log(notification)
       findChatMessage(notification.id).then((message) => {
         _this.messages.push(message);
       });
@@ -140,37 +152,34 @@ export class ChatComponent {
   }
 
   enterForSubmit(event: KeyboardEvent) {
-    console.log(event)
     if(event.keyCode === 13) {
       this.handleSendMessage()
     }
-
     return true
   }
   
   loadContacts() {
     const _this = this;
-    const promise = getAllUsersWithoutMe(_this.uId).then((users) => {
-      return users.map((contact) =>
-
+    const promise = getAllUsersWithoutMe(_this.uId).then((users: User[]) => {
+      return users.map((contact: User) =>
         countNewMessages(contact.id, _this.uId).then((data) => {
           // console.log(data)
           contact.newMessages = data.times;
           contact.lastMessage = data.lastMessage;
           return contact;
         })
-      )}
-    );
+      )
+    });
 
     promise.then((promises) =>
-      Promise.all(promises).then((users) => {
-        console.log(users)
-        users.sort((a, b) => {
+      Promise.all(promises).then((users: User[]) => {
+        // console.log(users)
+        _this.contactUsers = users;
+        _this.contactUsers.sort((a, b) => {
           if(!a.lastMessage) return 0; 
           if(!b.lastMessage) return -1;
           return b.lastMessage.id - a.lastMessage.id
         });
-        _this.contactUsers = users;
         if (_this.userActive === undefined && users.length > 0) {
           _this.userActive = users[0];
           _this.loadMessagesById(_this.userActive.id)
@@ -183,6 +192,7 @@ export class ChatComponent {
     const _this = this;
     if(id != _this.userActive.id) {
       console.log("Change user active: ", id)
+      _this.textMessageRef.nativeElement.focus();
       _this.loadMessagesById(id)
       getUserById(id)
           .then(json => {
@@ -219,20 +229,46 @@ export class ChatComponent {
         reader.onload = () => {
      
           let imageUrl = reader.result as string;
-          // console.log(imageUrl);
-          _this.imagePreviewUrl.push(imageUrl)
+          let imagePreview: ImagePreview = {
+            id: uuid.v4(),
+            url: imageUrl
+          }
+          _this.imagePreviews.push(imagePreview)
         };
       }
     }
   }
 
   logout() {
-    this.stompClient.send(`/app/users/status/${this.uId}/0`);
-    this.stompClient.disconnect();
-    // changeStatus(this.uId, false)
-    //   .then((res) => {console.log(res)})
-    //   .catch((err) => {console.log(err)})
+    this.onDisconnect()
     this.router.navigate(['login'])
     console.log('isOnline: ', this.stompClient.connected)
+  }
+
+  @HostListener('window:beforeunload', [ '$event' ])
+  beforeUnloadHandler(event) {
+    this.logout()
+  }
+
+  @HostListener('window:offline', ['$event'])
+  onOffline() {
+    console.log("ON OFFLINE")
+    this.onDisconnect()
+  }
+
+  @HostListener('window:online', ['$event'])
+  onOnline() {
+    console.log("ON ONLINE")
+    this.connect()
+  }
+
+  onDisconnect() {
+    
+    this.sendStatusUser(0)
+    this.stompClient.disconnect();
+  }
+
+  sendStatusUser(status) {
+    this.stompClient.send(`/app/users/status/${this.uId}/${status}`);
   }
 }

@@ -63,9 +63,7 @@
         </div>
         <div class="type_msg">
           <div class="type_msg-previews">
-            <div class="" *ngFor="let url of imagePreviewUrl">
-              <app-images-preview [imageUrl]="url"></app-images-preview>
-            </div>
+              <app-images-preview [imagePreviews]="imagePreviews"></app-images-preview>
           </div>
           <div class="input_msg_write">
             <div class="input_msg_write-utils">
@@ -82,7 +80,7 @@
                 </label>
               </div>
             </div>
-            <input type="text" class="write_msg" placeholder="Type a message" [(ngModel)]="text" 
+            <input #textMessageRef  type="text" class="write_msg" placeholder="Type a message" [(ngModel)]="text" 
               (keydown)="enterForSubmit($event)"
             />
             <button (click)="handleSendMessage()" class="msg_send_btn" type="button"><i class="fa fa-paper-plane-o"

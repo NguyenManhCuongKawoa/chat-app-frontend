@@ -1,4 +1,5 @@
 import { Component, Input, OnInit } from '@angular/core';
+import { ImagePreview } from 'src/app/interfaces/common';
 
 @Component({
   selector: 'app-images-preview',
@@ -8,12 +9,17 @@ import { Component, Input, OnInit } from '@angular/core';
 export class ImagesPreviewComponent implements OnInit {
 
 
-  @Input() imageUrl!: string 
+  @Input() 
+  private imagePreviews: ImagePreview[] = []
   
 
   constructor() { }
 
   ngOnInit() {
+  }
+
+  removeImage(imagePreview: ImagePreview) {
+    this.imagePreviews = this.imagePreviews.filter(i => i.id !== imagePreview.id)
   }
 
 }
