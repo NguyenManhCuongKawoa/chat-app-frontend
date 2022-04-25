@@ -5,7 +5,7 @@ import { Stomp, Client } from '@stomp/stompjs';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import * as uuid from 'uuid';
 
-import {ChatNotification, FilePreview, Message, User} from '../../interfaces/common'
+import {ChatNotification, FilePreview, Message, TypingNotification, User} from '../../interfaces/common'
 import {
   getAllUsersWithoutMe,
   countNewMessages,
@@ -46,7 +46,7 @@ export class ChatComponent implements OnInit, AfterViewInit {
   private fileImages: File[] = [];
   private fileOther: File[] = [];
 
-  inputFocused: boolean = false;
+  isPartnerTyping: boolean = false;
 
 
   constructor(private route: ActivatedRoute, private router: Router, private uploadFilesService: UploadFilesService){}
@@ -70,7 +70,7 @@ export class ChatComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    this.textMessageRef.nativeElement.focus();
+    // this.textMessageRef.nativeElement.focus();
   }
 
   connect() {
@@ -93,6 +93,11 @@ export class ChatComponent implements OnInit, AfterViewInit {
     this.stompClient.subscribe(
       "/user/" + this.uId + "/messages",
       this.onMessageReceived.bind(this)
+    );
+
+    this.stompClient.subscribe(
+      "/user/" + this.uId + "/messages/typing",
+      this.onPartnerTyping.bind(this)
     );
 
 
@@ -119,6 +124,14 @@ export class ChatComponent implements OnInit, AfterViewInit {
     } else {
       // Notification message arrived
       _this.loadContacts()
+    }
+  }
+
+  onPartnerTyping(payload) {
+    const typingNotification: TypingNotification= JSON.parse(payload.body)
+    if (this.userActive.id == typingNotification.senderId) {
+      console.log("typingNotification", typingNotification)
+      this.isPartnerTyping = typingNotification.typing;
     }
   }
 
@@ -241,7 +254,7 @@ export class ChatComponent implements OnInit, AfterViewInit {
   loadContacts() {
     const _this = this;
     const promise = getAllUsersWithoutMe(_this.uId).then((users: User[]) => {
-      return users.map((contact: User) =>
+      return users.map((contact: User): Promise<User>[] => 
         countNewMessages(contact.id, _this.uId).then((data) => {
           // console.log(data)
           contact.newMessages = data.times;
@@ -251,28 +264,8 @@ export class ChatComponent implements OnInit, AfterViewInit {
       )
     });
 
-    // promise.then((promises) => {
-    //     for(let promise of promises) {
-    //       promise.then((user: User) => {
-    //         _this.contactUsers.push(user);
-    //       })
-    //     }
-    //     _this.contactUsers.sort((a, b) => {
-    //       if(!a.lastMessage) return 0;
-    //       if(!b.lastMessage) return -1;
-    //       return b.lastMessage.id - a.lastMessage.id
-    //     });
-
-    //     if (_this.userActive === undefined && _this.contactUsers.length > 0) {
-    //       _this.userActive =  _this.contactUsers[0];
-    //       _this.loadMessagesById(_this.userActive.id)
-    //     }
-    //   }
-
-    // );
-
     
-    promise.then((promises) =>
+    promise.then((promises: Promise<User>[]) =>
       Promise.all(promises).then((users: User[]) => {
         // console.log(users)
         _this.contactUsers = users;
@@ -294,7 +287,7 @@ export class ChatComponent implements OnInit, AfterViewInit {
     const _this = this;
     if(id != _this.userActive.id) {
       console.log("Change user active: ", id)
-      _this.textMessageRef.nativeElement.focus();
+      // _this.textMessageRef.nativeElement.focus();
       _this.loadMessagesById(id)
       getUserById(id)
           .then(json => {
@@ -370,6 +363,24 @@ export class ChatComponent implements OnInit, AfterViewInit {
     console.log(filePreviewName)
     this.fileOther = this.fileOther.filter(file => file.name.localeCompare(filePreviewName) != 0)
     this.filePreviews = this.filePreviews.filter(filePreview => filePreview.localeCompare(filePreviewName) != 0)
+  }
+
+  textMessageFocus() {
+    let typingNotification: TypingNotification = {
+      senderId: this.uId,
+      recipientId: this.userActive.id,
+      typing: true
+    }
+    this.stompClient.send(`/app/chat/typing`, {}, JSON.stringify(typingNotification));
+  }
+
+  textMessageBlur() {
+    let typingNotification: TypingNotification = {
+      senderId: this.uId,
+      recipientId: this.userActive.id,
+      typing: false
+    }
+    this.stompClient.send(`/app/chat/typing`, {}, JSON.stringify(typingNotification));
   }
 
   logout() {

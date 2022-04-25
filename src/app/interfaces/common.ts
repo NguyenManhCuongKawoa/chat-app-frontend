@@ -7,6 +7,12 @@ export interface ChatNotification {
     recipientId: number
 }
 
+export interface TypingNotification {
+    senderId: number,
+    recipientId: number,
+    typing: boolean
+}
+
 export interface Message {
     id?: number,
     senderId: number,

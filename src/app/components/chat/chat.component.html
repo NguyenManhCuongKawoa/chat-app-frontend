@@ -85,7 +85,7 @@
               <app-images-preview [action]="'delete'" [imagePreviews]="imagePreviews" (deleteImagePreview)="deleteImagePreview($event)"></app-images-preview>
               <app-files-preview [action]="'delete'" [filePreviews]="filePreviews" (deleteFilePreview)="deleteFilePreview($event)" ></app-files-preview>
               <div class="msg_loading" style="margin-bottom: 16px; padding-left: 16px; height: 0;"
-                  *ngIf="inputFocused" >
+                  *ngIf="isPartnerTyping" >
                 <app-spinner></app-spinner>
               </div>
           </div>
@@ -116,7 +116,7 @@
                 </label>
               </div>
             </div>
-            <input #textMessageRef (focus)="inputFocused = true" (blur)="inputFocused = false"   type="text" class="write_msg" placeholder="Type a message" [(ngModel)]="text" 
+            <input #textMessageRef (focus)="textMessageFocus()" (blur)="textMessageBlur()"   type="text" class="write_msg" placeholder="Type a message" [(ngModel)]="text" 
               (keydown)="enterForSubmit($event)"
             />
             <button (click)="handleSendMessage()" class="msg_send_btn" type="button"><i class="fa fa-paper-plane-o"
