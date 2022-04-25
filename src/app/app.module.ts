@@ -12,6 +12,7 @@ import { ChatComponent } from './components/chat/chat.component';
 import { SigninComponent } from './components/signin/signin.component';
 import { ImagesPreviewComponent } from './components/chat/images-preview/images-preview.component';
 import { SpinnerComponent } from './components/spinner/spinner.component';
+import { FilesPreviewComponent } from './components/chat/files-preview/files-preview.component';
 
 @NgModule({
   declarations: [
@@ -20,7 +21,8 @@ import { SpinnerComponent } from './components/spinner/spinner.component';
     ChatComponent,
     SigninComponent,
     ImagesPreviewComponent,
-    SpinnerComponent
+    SpinnerComponent,
+    FilesPreviewComponent
   ],
   imports: [
     BrowserModule,

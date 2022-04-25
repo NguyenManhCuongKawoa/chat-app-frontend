@@ -5,17 +5,19 @@ import { Stomp, Client } from '@stomp/stompjs';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import * as uuid from 'uuid';
 
-import {ChatNotification, ImagePreview, Message, User} from '../../interfaces/common'
+import {ChatNotification, FilePreview, Message, User} from '../../interfaces/common'
 import {
   getAllUsersWithoutMe,
-  countNewMessages, 
+  countNewMessages,
   getUserById,
   findChatMessages,
   findChatMessage,
   saveMessage,
-  changeMessageStatus
+  changeMessageStatus,
+  uploadFiles
 } from '../../utils/ApiUtil'
 import { ScrollToBottomDirective } from 'src/app/utils/scroll-to-bottom.directive';
+import { UploadFilesService } from 'src/app/services/UploadFilesService.service';
 
 @Component({
   selector: 'app-chat',
@@ -23,13 +25,13 @@ import { ScrollToBottomDirective } from 'src/app/utils/scroll-to-bottom.directiv
   styleUrls: ['./chat.component.css']
 })
 export class ChatComponent implements OnInit, AfterViewInit {
-  
+
   // @ViewChild(ScrollToBottomDirective)
   scroll: ScrollToBottomDirective;
 
-  @ViewChild('textMessageRef', {static: false}) 
+  @ViewChild('textMessageRef', {static: false})
   private textMessageRef: ElementRef;
-  
+
   title = 'WebSocketChatRoom';
 
   private stompClient = null;
@@ -39,13 +41,18 @@ export class ChatComponent implements OnInit, AfterViewInit {
   private contactUsers: User[] = [];
   private messages: Message[] = [];
   private text: string;
-  private imagePreviews: ImagePreview[] = [];
+  private imagePreviews: FilePreview[] = [];
+  private filePreviews: String[] = [];
+  private fileImages: File[] = [];
+  private fileOther: File[] = [];
+
+  inputFocused: boolean = false;
 
 
-  constructor(private route: ActivatedRoute, private router: Router){}
+  constructor(private route: ActivatedRoute, private router: Router, private uploadFilesService: UploadFilesService){}
 
   ngOnInit() {
-    
+
     const _this = this;
 
     this.route.paramMap.subscribe((params: ParamMap) => {
@@ -55,9 +62,9 @@ export class ChatComponent implements OnInit, AfterViewInit {
           _this.user = json
         })
         .catch(err => console.log(err.message))
-    
+
     })
-   
+
     this.connect();
     this.loadContacts();
   }
@@ -70,7 +77,7 @@ export class ChatComponent implements OnInit, AfterViewInit {
     const _this = this;
     const socket = new SockJS('http://localhost:8080/ws');
     this.stompClient = Stomp.over(() => socket);
-    console.log(this.stompClient); 
+    console.log(this.stompClient);
 
     this.stompClient.connect({}, _this.onConnected.bind(_this), _this.onError.bind(_this), _this.onClosed.bind(_this))
   }
@@ -79,22 +86,22 @@ export class ChatComponent implements OnInit, AfterViewInit {
     console.log('Connected: ' + frame);
 
     this.stompClient.subscribe(
-      "/user/status", 
+      "/user/status",
       this.onChangeStatus.bind(this)
     );
-    
+
     this.stompClient.subscribe(
-      "/user/" + this.uId + "/messages", 
+      "/user/" + this.uId + "/messages",
       this.onMessageReceived.bind(this)
     );
 
-   
+
     this.sendStatusUser(1)
   }
 
   onError(err) {
     console.log("Error", err);
-    
+
     this.onDisconnect()
   };
 
@@ -116,7 +123,7 @@ export class ChatComponent implements OnInit, AfterViewInit {
   }
 
   onChangeStatus(payload) {
-    
+
     console.log('change online:', payload);
     const _this = this;
     const user = JSON.parse(payload.body);
@@ -128,46 +135,17 @@ export class ChatComponent implements OnInit, AfterViewInit {
     })
   }
 
-  sendMessage(msg) {
-    const _this = this
-    let haveMessage = false;
-    const message:Message = {
-      senderId: _this.user.id,
-      recipientId: _this.userActive.id,
-      senderName: _this.user.username,
-      recipientName: _this.userActive.username,
-      timestamp: new Date(),
-    };
-    if (msg != null && msg.trim() !== "") {
-      message.text = msg;
-      haveMessage = true;
-    }
-
-    if(_this.imagePreviews.length > 0) {
-      let images: string[] = []
-      for(let imagePreview of _this.imagePreviews) {
-        images.push(btoa(imagePreview.url))
-      }
-      message.images = images;
-      haveMessage = true;
-    }
-
-    console.log(message)
-    if(haveMessage) {
-
-      // View loading message
-      message.status = 'loading';
-      _this.messages.push(message);
-
-      saveMessage(message)
+  sendMessage(message: Message) {
+    const _this = this;
+    saveMessage(message)
       .then(res => {
         console.log(res);
 
         let chatNotification: ChatNotification = {
-          chatId: res.id, 
+          chatId: res.id,
           senderId: res.senderId,
           senderName: res.senderName,
-          recipientId: res.recipientId, 
+          recipientId: res.recipientId,
         }
         console.log(chatNotification)
         _this.stompClient.send("/app/chat", {}, JSON.stringify(chatNotification));
@@ -177,10 +155,10 @@ export class ChatComponent implements OnInit, AfterViewInit {
             _this.messages.pop();
             _this.messages.push(json);
           });
-        
+
         _this.contactUsers = _this.contactUsers.filter(a => a.id != _this.userActive.id)
         _this.contactUsers.unshift(_this.userActive)
-  
+
       })
       .catch(err => {
         console.log(err);
@@ -191,14 +169,66 @@ export class ChatComponent implements OnInit, AfterViewInit {
             _this.messages.push(json);
           });
       })
-     
-    }
+
   };
 
   handleSendMessage() {
-    this.sendMessage(this.text);
-    this.text = '';
-    this.imagePreviews = [];
+    const _this = this
+    let haveMessage = false;
+    const message:Message = {
+      senderId: _this.user.id,
+      recipientId: _this.userActive.id,
+      senderName: _this.user.username,
+      recipientName: _this.userActive.username,
+      timestamp: new Date(),
+    };
+    if (_this.text != null && _this.text.trim() !== "") {
+      message.text = _this.text.trim();
+      haveMessage = true;
+    }
+    // console.log(_this.imagePreviews)
+    if(_this.fileImages.length > 0) {
+      haveMessage = true;
+    }
+
+    if(_this.fileOther.length > 0) {
+      haveMessage = true;
+    }
+
+    console.log(message)
+    if(haveMessage) {
+
+      // View loading message
+      message.status = 'loading';
+      _this.messages.push(message);
+      console.log(_this.fileImages, _this.fileOther)
+      const iLength = _this.fileImages.length
+      let fileWrap = [..._this.fileImages, ..._this.fileOther];
+      
+      _this.uploadFilesService.uploadFile(fileWrap).subscribe(
+        (filePaths: string[]) => {
+          message.images = []
+          message.files = []
+          for(let i = 0; i < iLength; i++) {
+            message.images.push(filePaths[i])
+          }
+
+          for(let i = iLength; i < filePaths.length; i++) {
+            message.files.push(filePaths[i])
+          }
+          console.log(message.images, message.files)
+          _this.sendMessage(message);
+        }, err => {
+          alert(err.message);
+        }
+      );
+    }
+    
+    _this.text = '';
+    _this.imagePreviews = [];
+    _this.fileImages = [];
+    _this.fileOther = [];
+    _this.filePreviews = []
   }
 
   enterForSubmit(event: KeyboardEvent) {
@@ -207,7 +237,7 @@ export class ChatComponent implements OnInit, AfterViewInit {
     }
     return true
   }
-  
+
   loadContacts() {
     const _this = this;
     const promise = getAllUsersWithoutMe(_this.uId).then((users: User[]) => {
@@ -221,12 +251,33 @@ export class ChatComponent implements OnInit, AfterViewInit {
       )
     });
 
+    // promise.then((promises) => {
+    //     for(let promise of promises) {
+    //       promise.then((user: User) => {
+    //         _this.contactUsers.push(user);
+    //       })
+    //     }
+    //     _this.contactUsers.sort((a, b) => {
+    //       if(!a.lastMessage) return 0;
+    //       if(!b.lastMessage) return -1;
+    //       return b.lastMessage.id - a.lastMessage.id
+    //     });
+
+    //     if (_this.userActive === undefined && _this.contactUsers.length > 0) {
+    //       _this.userActive =  _this.contactUsers[0];
+    //       _this.loadMessagesById(_this.userActive.id)
+    //     }
+    //   }
+
+    // );
+
+    
     promise.then((promises) =>
       Promise.all(promises).then((users: User[]) => {
         // console.log(users)
         _this.contactUsers = users;
         _this.contactUsers.sort((a, b) => {
-          if(!a.lastMessage) return 0; 
+          if(!a.lastMessage) return 0;
           if(!b.lastMessage) return -1;
           return b.lastMessage.id - a.lastMessage.id
         });
@@ -235,6 +286,7 @@ export class ChatComponent implements OnInit, AfterViewInit {
           _this.loadMessagesById(_this.userActive.id)
         }
       })
+      
     );
   };
 
@@ -260,32 +312,34 @@ export class ChatComponent implements OnInit, AfterViewInit {
         json.forEach(message => {
           _this.messages.push( message );
         })
-        
+
       })
       .catch(err => console.log(err.message))
-  
+
     _this.loadContacts()
   }
 
   onImageUploadChange(event) {
     console.log(event.target.files )
     const _this = this;
-    
+
     if(event.target.files && event.target.files.length) {
       const files = event.target.files;
-      for(let i = 0; i < files.length; i++) {
-        
+      for(let i = 0; i <  files.length; i++) {
+       
         const reader = new FileReader();
-        let file = files[i];
+        let file =  files[i];
+        _this.fileImages.push(file);
 
         reader.readAsDataURL(file);
-    
+
         reader.onload = () => {
-     
+
           let imageUrl = reader.result as string;
-          let imagePreview: ImagePreview = {
+          let imagePreview: FilePreview = {
             id: uuid.v4(),
-            url: imageUrl
+            url: imageUrl,
+            fileName: file.name,
           }
           _this.imagePreviews.push(imagePreview)
         };
@@ -293,9 +347,29 @@ export class ChatComponent implements OnInit, AfterViewInit {
     }
   }
 
-  deleteImagePreview(imagePreview: ImagePreview) {
+  deleteImagePreview(imagePreview: FilePreview) {
     this.imagePreviews = this.imagePreviews.filter(i => i.id !== imagePreview.id)
-    // console.log(this.imagePreviews)
+    this.fileImages = this.fileImages.filter(file => file.name.localeCompare(imagePreview.fileName) != 0)
+  }
+
+  
+  onFileUploadChange(event) {
+    console.log(event.target.files )
+    const _this = this;
+
+    if(event.target.files && event.target.files.length) {
+      const files = event.target.files;
+      for(let i = 0; i <  files.length; i++) {
+       _this.fileOther.push(files[i]);
+       _this.filePreviews.push(files[i].name);
+      }
+    }
+  }
+
+  deleteFilePreview(filePreviewName: string) {
+    console.log(filePreviewName)
+    this.fileOther = this.fileOther.filter(file => file.name.localeCompare(filePreviewName) != 0)
+    this.filePreviews = this.filePreviews.filter(filePreview => filePreview.localeCompare(filePreviewName) != 0)
   }
 
   logout() {
@@ -322,7 +396,6 @@ export class ChatComponent implements OnInit, AfterViewInit {
   }
 
   onDisconnect() {
-    
     this.sendStatusUser(0)
     this.stompClient.disconnect();
   }
@@ -330,4 +403,5 @@ export class ChatComponent implements OnInit, AfterViewInit {
   sendStatusUser(status) {
     this.stompClient.send(`/app/users/status/${this.uId}/${status}`);
   }
+
 }

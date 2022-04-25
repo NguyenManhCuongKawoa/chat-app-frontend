@@ -141,7 +141,7 @@ img {
   width: 92%;
 }
 
-.received_withd_msg p {
+.received_withd_msg .msg_history_content {
   background: #ebebeb none repeat scroll 0 0;
   border-radius: 3px;
   color: #646464;
@@ -160,6 +160,7 @@ img {
 
 .received_withd_msg {
   width: 57%;
+  height: fit-content;
 }
 
 .mesgs {
@@ -168,21 +169,27 @@ img {
   width: 60%;
 }
 
-.sent_msg p {
+.sent_msg .msg_history_content {
   background: #05728f none repeat scroll 0 0;
   border-radius: 3px;
   font-size: 14px;
   margin: 0;
   color: #fff;
   padding: 5px 10px 5px 12px;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  height: fit-content;
 }
 
-.outgoing_msg.loading .sent_msg p {
+.sent_msg .msg_history_content .msg_history_content-images {
+  margin-bottom: 8px;
+}
+
+.outgoing_msg.loading .sent_msg .msg_history_content {
   background-color: #a6a6a6;
 }
 
-.outgoing_msg.error .sent_msg p {
+.outgoing_msg.error .sent_msg .msg_history_content {
   border: 1.5px solid red;
   background: #f1bcbc;
 }
@@ -206,6 +213,18 @@ img {
   justify-content: center;
   align-items: center;
   position: relative;
+}
+
+.input_msg_write-utils {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.input_msg_write-utils .icon-util {
+  color: rgb(0, 132, 255);
+  font-size: 18px;
 }
 
 .input_msg_write-utils-upload-images {
@@ -265,4 +284,5 @@ img {
   display: flex;
   flex-wrap: wrap;
   padding-top: 8px;
+  gap: 8px;
 }

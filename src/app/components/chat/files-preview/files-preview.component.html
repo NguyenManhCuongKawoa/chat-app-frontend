@@ -1,0 +1,9 @@
+<div class="file-preview" >
+    <div class='file-preview_item' *ngFor="let filePreview of filePreviews">
+        <div class="file-preview_item-icon">
+            <i data-visualcompletion="css-img" class="hu5pjgll lzf7d6o1" style="background-image: url(&quot;https://static.xx.fbcdn.net/rsrc.php/v3/y1/r/ndknHjUUMG8.png&quot;); background-position: 0px -302px; background-size: 34px 356px; width: 16px; height: 16px; background-repeat: no-repeat; display: inline-block;"></i>
+        </div>
+        <div class='file-preview-close' (click)="removeFile(filePreview)" *ngIf="action == 'delete'"></div>
+        <p class='file-preview_item-name'>{{filePreview}}</p>
+    </div>
+</div>

@@ -29,7 +29,8 @@ export interface User {
     lastMessage?: Message,
 }
 
-export interface ImagePreview {
+export interface FilePreview {
     id: number,
     url: string,
+    fileName: string,
 }

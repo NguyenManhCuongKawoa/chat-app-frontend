@@ -1,5 +1,5 @@
 import { Component, Input, OnInit, Output, EventEmitter } from '@angular/core';
-import { ImagePreview } from 'src/app/interfaces/common';
+import { FilePreview } from 'src/app/interfaces/common';
 
 @Component({
   selector: 'app-images-preview',
@@ -10,10 +10,13 @@ export class ImagesPreviewComponent implements OnInit {
 
 
   @Input() 
-  private imagePreviews: ImagePreview[] = []
+  private imagePreviews: FilePreview[] = []
   
   @Output() 
-  private deleteImagePreview = new EventEmitter<ImagePreview>()
+  private deleteImagePreview = new EventEmitter<FilePreview>()
+
+  @Input() 
+  private action: String
 
 
   constructor() { }
@@ -21,8 +24,10 @@ export class ImagesPreviewComponent implements OnInit {
   ngOnInit() {
   }
 
-  removeImage(imagePreview: ImagePreview) {
-    this.deleteImagePreview.emit(imagePreview)
+  removeImage(imagePreview: FilePreview) {
+    if(this.action == 'delete') {
+      this.deleteImagePreview.emit(imagePreview)
+    }
   }
 
 }

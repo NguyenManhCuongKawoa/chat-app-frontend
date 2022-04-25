@@ -140,3 +140,24 @@ export function changeMessageStatus(id, status) {
     })
   )
 }
+
+export function uploadFiles(files) {
+  const formData = new FormData();
+  formData.set('files', files);
+  return fetch(CHAT_SERVICE + '/messages/upload-file', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    body: formData
+  })
+  .then((response) =>
+    response.json().then((json) => {
+      if (!response.ok) {
+        return Promise.reject(json);
+      }
+      return json;
+    })
+  )
+
+}
