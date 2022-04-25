@@ -110,3 +110,33 @@ export function findChatMessage(id) {
     method: "GET",
   });
 }
+
+export function saveMessage(data) {
+  return fetch(CHAT_SERVICE + '/messages/save', {
+    method: 'POST',
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  })
+  .then((response) =>
+    response.json().then((json) => {
+      if (!response.ok) {
+        return Promise.reject(json);
+      }
+      return json;
+    })
+  )
+}
+
+export function changeMessageStatus(id, status) {
+  return fetch(CHAT_SERVICE + '/messages/status/change/' + id + '/' + status)
+  .then((response) =>
+    response.json().then((json) => {
+      if (!response.ok) {
+        return Promise.reject(json);
+      }
+      return json;
+    })
+  )
+}

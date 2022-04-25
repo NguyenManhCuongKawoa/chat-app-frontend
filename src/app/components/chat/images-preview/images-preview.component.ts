@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, Output, EventEmitter } from '@angular/core';
 import { ImagePreview } from 'src/app/interfaces/common';
 
 @Component({
@@ -12,6 +12,9 @@ export class ImagesPreviewComponent implements OnInit {
   @Input() 
   private imagePreviews: ImagePreview[] = []
   
+  @Output() 
+  private deleteImagePreview = new EventEmitter<ImagePreview>()
+
 
   constructor() { }
 
@@ -19,7 +22,7 @@ export class ImagesPreviewComponent implements OnInit {
   }
 
   removeImage(imagePreview: ImagePreview) {
-    this.imagePreviews = this.imagePreviews.filter(i => i.id !== imagePreview.id)
+    this.deleteImagePreview.emit(imagePreview)
   }
 
 }

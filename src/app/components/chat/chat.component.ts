@@ -5,13 +5,15 @@ import { Stomp, Client } from '@stomp/stompjs';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import * as uuid from 'uuid';
 
-import {ImagePreview, Message, User} from '../../interfaces/common'
+import {ChatNotification, ImagePreview, Message, User} from '../../interfaces/common'
 import {
   getAllUsersWithoutMe,
   countNewMessages, 
   getUserById,
   findChatMessages,
   findChatMessage,
+  saveMessage,
+  changeMessageStatus
 } from '../../utils/ApiUtil'
 import { ScrollToBottomDirective } from 'src/app/utils/scroll-to-bottom.directive';
 
@@ -37,7 +39,6 @@ export class ChatComponent implements OnInit, AfterViewInit {
   private contactUsers: User[] = [];
   private messages: Message[] = [];
   private text: string;
-
   private imagePreviews: ImagePreview[] = [];
 
 
@@ -105,7 +106,7 @@ export class ChatComponent implements OnInit, AfterViewInit {
     const _this = this;
     const notification = JSON.parse(msg.body);
     if (this.userActive.id == notification.senderId) {
-      findChatMessage(notification.id).then((message) => {
+      findChatMessage(notification.chatId).then((message) => {
         _this.messages.push(message);
       });
     } else {
@@ -129,26 +130,75 @@ export class ChatComponent implements OnInit, AfterViewInit {
 
   sendMessage(msg) {
     const _this = this
-    if (msg.trim() !== "") {
-      const message:Message = {
-        senderId: _this.user.id,
-        recipientId: _this.userActive.id,
-        senderName: _this.user.username,
-        recipientName: _this.userActive.username,
-        content: msg,
-        timestamp: new Date(),
-      };
-      _this.stompClient.send("/app/chat", {}, JSON.stringify(message));
+    let haveMessage = false;
+    const message:Message = {
+      senderId: _this.user.id,
+      recipientId: _this.userActive.id,
+      senderName: _this.user.username,
+      recipientName: _this.userActive.username,
+      timestamp: new Date(),
+    };
+    if (msg != null && msg.trim() !== "") {
+      message.text = msg;
+      haveMessage = true;
+    }
 
+    if(_this.imagePreviews.length > 0) {
+      let images: string[] = []
+      for(let imagePreview of _this.imagePreviews) {
+        images.push(btoa(imagePreview.url))
+      }
+      message.images = images;
+      haveMessage = true;
+    }
+
+    console.log(message)
+    if(haveMessage) {
+
+      // View loading message
+      message.status = 'loading';
       _this.messages.push(message);
-      _this.contactUsers = _this.contactUsers.filter(a => a.id != _this.userActive.id)
-      _this.contactUsers.unshift(_this.userActive)
+
+      saveMessage(message)
+      .then(res => {
+        console.log(res);
+
+        let chatNotification: ChatNotification = {
+          chatId: res.id, 
+          senderId: res.senderId,
+          senderName: res.senderName,
+          recipientId: res.recipientId, 
+        }
+        console.log(chatNotification)
+        _this.stompClient.send("/app/chat", {}, JSON.stringify(chatNotification));
+
+        changeMessageStatus(res.id, 'received')
+          .then((json) => {
+            _this.messages.pop();
+            _this.messages.push(json);
+          });
+        
+        _this.contactUsers = _this.contactUsers.filter(a => a.id != _this.userActive.id)
+        _this.contactUsers.unshift(_this.userActive)
+  
+      })
+      .catch(err => {
+        console.log(err);
+        _this.messages[_this.messages.length - 1].status = 'error';
+        changeMessageStatus(_this.messages[_this.messages.length - 1].id, 'error')
+          .then((json) => {
+            _this.messages.pop();
+            _this.messages.push(json);
+          });
+      })
+     
     }
   };
 
   handleSendMessage() {
     this.sendMessage(this.text);
-    this.text = ''
+    this.text = '';
+    this.imagePreviews = [];
   }
 
   enterForSubmit(event: KeyboardEvent) {
@@ -206,7 +256,11 @@ export class ChatComponent implements OnInit, AfterViewInit {
     const _this = this;
     await findChatMessages(_this.uId, id)
       .then(json => {
-        _this.messages = json
+        console.log(json)
+        json.forEach(message => {
+          _this.messages.push( message );
+        })
+        
       })
       .catch(err => console.log(err.message))
   
@@ -237,6 +291,11 @@ export class ChatComponent implements OnInit, AfterViewInit {
         };
       }
     }
+  }
+
+  deleteImagePreview(imagePreview: ImagePreview) {
+    this.imagePreviews = this.imagePreviews.filter(i => i.id !== imagePreview.id)
+    // console.log(this.imagePreviews)
   }
 
   logout() {

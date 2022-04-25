@@ -178,6 +178,19 @@ img {
   width: 100%;
 }
 
+.outgoing_msg.loading .sent_msg p {
+  background-color: #a6a6a6;
+}
+
+.outgoing_msg.error .sent_msg p {
+  border: 1.5px solid red;
+  background: #f1bcbc;
+}
+
+.outgoing_msg.error .sent_msg .time_date {
+  color: red;
+}
+
 .outgoing_msg {
   overflow: hidden;
   margin: 26px 0 26px;
@@ -250,8 +263,6 @@ img {
 
 .type_msg-previews {
   display: flex;
-  justify-content: center;
-  align-items: center;
   flex-wrap: wrap;
   padding-top: 8px;
 }

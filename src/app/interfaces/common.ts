@@ -1,12 +1,23 @@
+export type HTTPStatus = 'UPLOADING' | 'COMPLETED' | 'ERROR'
+
+export interface ChatNotification {
+    chatId: number,
+    senderId: number,
+    senderName: string,
+    recipientId: number
+}
+
 export interface Message {
     id?: number,
     senderId: number,
     recipientId: number,
     senderName: string,
     recipientName: string,
-    content: string,
+    text?: string,
+    images?: string[],
+    files?: string[],
     timestamp: Date,
-    status?: string
+    status?: 'loading' | 'error' | 'received' | 'delivered'
 }
   
 export interface User {
